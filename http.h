@@ -104,6 +104,20 @@ inline std::string merge_target_and_query(const std::string& target, const std::
     return base + "&" + query;
 }
 
+inline bool contains_token_case_insensitive(const std::string& value, const std::string& token) {
+    const std::string lower_value = to_lower(value);
+    const std::string lower_token = to_lower(token);
+    return lower_value.find(lower_token) != std::string::npos;
+}
+
+inline std::string host_header_value(const ParsedUrl& parsed) {
+    if (parsed.port == "80") {
+        return parsed.host;
+    }
+
+    return parsed.host + ":" + parsed.port;
+}
+
 inline ParsedUrl parse_url(const std::string& url) {
     const std::string prefix = "http://";
     if (url.compare(0, prefix.size(), prefix) != 0) {
@@ -216,7 +230,12 @@ inline std::string decode_chunked_body(const std::string& chunked_body) {
             break;
         }
 
-        const std::string size_text = chunked_body.substr(position, line_end - position);
+        std::string size_text = chunked_body.substr(position, line_end - position);
+        const std::size_t extension_pos = size_text.find(';');
+        if (extension_pos != std::string::npos) {
+            size_text = size_text.substr(0, extension_pos);
+        }
+
         std::stringstream converter;
         converter << std::hex << size_text;
 
@@ -283,8 +302,7 @@ inline Response parse_response(const std::string& raw_response, const std::strin
         response.headers[key] = value;
     }
 
-    const std::string transfer_encoding = to_lower(response.header("Transfer-Encoding"));
-    if (transfer_encoding == "chunked") {
+    if (contains_token_case_insensitive(response.header("Transfer-Encoding"), "chunked")) {
         body = decode_chunked_body(body);
     }
 
@@ -311,7 +329,7 @@ inline Response request(const std::string& method, const std::string& url, Reque
     }
 
     if (options.headers.find("Host") == options.headers.end()) {
-        options.headers["Host"] = parsed.host;
+        options.headers["Host"] = detail::host_header_value(parsed);
     }
     if (options.headers.find("User-Agent") == options.headers.end()) {
         options.headers["User-Agent"] = "libhttp/1.0";
@@ -457,31 +475,31 @@ class Client {
     }
 
     Response get(const std::string& path, RequestOptions options = {}) const {
-        return request("GET", path, prepare(options));
+        return request("GET", path, options);
     }
 
     Response post(const std::string& path, RequestOptions options = {}) const {
-        return request("POST", path, prepare(options));
+        return request("POST", path, options);
     }
 
     Response put(const std::string& path, RequestOptions options = {}) const {
-        return request("PUT", path, prepare(options));
+        return request("PUT", path, options);
     }
 
     Response delete_(const std::string& path, RequestOptions options = {}) const {
-        return request("DELETE", path, prepare(options));
+        return request("DELETE", path, options);
     }
 
     Response head(const std::string& path, RequestOptions options = {}) const {
-        return request("HEAD", path, prepare(options));
+        return request("HEAD", path, options);
     }
 
     Response options(const std::string& path, RequestOptions options = {}) const {
-        return request("OPTIONS", path, prepare(options));
+        return request("OPTIONS", path, options);
     }
 
     Response patch(const std::string& path, RequestOptions options = {}) const {
-        return request("PATCH", path, prepare(options));
+        return request("PATCH", path, options);
     }
 };
 
