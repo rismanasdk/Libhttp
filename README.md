@@ -1,21 +1,38 @@
 # LibHTTP
 
-LibHTTP is a small header-only C++ HTTP/1.1 client library for plain `http://` requests.
+Small header-only C++ HTTP client with a requests-like API.
 
-The API is designed to feel familiar if you have used Python `requests` before:
+`libhttp` is designed for simple `http://` use cases where you want a light client, direct control, and a familiar interface:
 
-- simple free functions such as `http::get(...)`
-- a reusable `http::Client` object
-- a `http::Response` object with `status_code`, `headers`, `body`, and `text()`
+- free functions like `http::get(...)`
+- a reusable `http::Client`
+- a `http::Response` with `status_code`, `headers`, `body`, and `text()`
 
-This library supports plain HTTP only. It does not support HTTPS.
+This project currently focuses on plain HTTP over HTTP/1.1. It is not trying to match the full feature set of Python `requests`.
+
+## Positioning
+
+`libhttp` is a good fit if you want:
+
+- a tiny header-only client
+- no external dependency
+- requests-like ergonomics
+- explicit behavior
+
+It is not a good fit if you need:
+
+- HTTPS
+- redirects
+- cookies or sessions
+- automatic JSON parsing
+- HTTP/2 or HTTP/3
 
 ## Features
 
 - `GET`
 - `POST`
 - `PUT`
-- `DELETE` through `delete_()`
+- `DELETE` via `delete_()`
 - `OPTIONS`
 - `HEAD`
 - `PATCH`
@@ -24,12 +41,14 @@ This library supports plain HTTP only. It does not support HTTPS.
 - form data
 - raw body payloads
 - reusable client with default headers and timeout
+- chunked response decoding
+- case-insensitive response header lookup
 
-## Headers
+## Files
 
-- `http.h` for the full library
-- `http_request.h` for request options
-- `http_response.h` for the response object
+- `http.h`: main header
+- `http_request.h`: request options
+- `http_response.h`: response object
 
 ## Quick Start
 
@@ -46,15 +65,15 @@ int main() {
 }
 ```
 
-## Requests-Like Examples
+## Examples
 
-### GET
+### Basic GET
 
 ```cpp
 http::Response response = http::get("http://example.com");
 ```
 
-### GET with query params
+### GET with query parameters
 
 ```cpp
 http::RequestOptions options;
@@ -64,7 +83,7 @@ options.params["search"] = "cpp";
 http::Response response = http::get("http://example.com/articles", options);
 ```
 
-### POST with form data
+### POST form data
 
 ```cpp
 http::RequestOptions options;
@@ -74,7 +93,7 @@ options.data["role"] = "student";
 http::Response response = http::post("http://example.com/login", options);
 ```
 
-### POST with raw body
+### POST JSON body
 
 ```cpp
 http::RequestOptions options;
@@ -84,44 +103,17 @@ options.body = "{\"name\":\"Risman\"}";
 http::Response response = http::post("http://example.com/api/users", options);
 ```
 
-### PUT
-
-```cpp
-http::RequestOptions options;
-options.body = "updated value";
-
-http::Response response = http::put("http://example.com/items/1", options);
-```
-
-### DELETE
-
-```cpp
-http::Response response = http::delete_("http://example.com/items/1");
-```
-
-### OPTIONS
-
-```cpp
-http::Response response = http::options("http://example.com");
-```
-
-### HEAD
+### HEAD request
 
 ```cpp
 http::Response response = http::head("http://example.com");
-std::string server = response.header("Server");
+
+if (response.has_header("server")) {
+    std::cout << response.header("Server") << '\n';
+}
 ```
 
-### PATCH
-
-```cpp
-http::RequestOptions options;
-options.body = "partial update";
-
-http::Response response = http::patch("http://example.com/items/1", options);
-```
-
-## Using Client
+### Reusable client
 
 ```cpp
 #include <iostream>
@@ -140,15 +132,15 @@ int main() {
 }
 ```
 
-## API Reference
+## API
 
 ### `http::RequestOptions`
 
-- `headers` for custom request headers
-- `params` for query string parameters
-- `data` for `application/x-www-form-urlencoded` form data
-- `body` for raw request body
-- `timeout_seconds` for socket timeout
+- `headers`: custom request headers
+- `params`: query string parameters
+- `data`: `application/x-www-form-urlencoded` form fields
+- `body`: raw request body
+- `timeout_seconds`: socket timeout in seconds
 
 ### `http::Response`
 
@@ -162,6 +154,8 @@ int main() {
 - `text()`
 - `content()`
 - `header(key)`
+- `has_header(key)`
+- `is_redirect()`
 
 ### Free Functions
 
@@ -176,9 +170,9 @@ int main() {
 
 ### `http::Client`
 
-- constructor `Client()`
-- constructor `Client(base_url)`
-- constructor `Client(base_url, headers, timeout_seconds)`
+- `Client()`
+- `Client(base_url)`
+- `Client(base_url, headers, timeout_seconds)`
 - `set_base_url(url)`
 - `get_base_url()`
 - `set_timeout(seconds)`
@@ -198,19 +192,38 @@ int main() {
 ## Notes
 
 - Only `http://` URLs are accepted.
-- The library uses HTTP/1.1 over TCP sockets.
-- `delete_()` uses an underscore because `delete` is a reserved keyword in C++.
-- `Connection: close` is used by default to keep the implementation simple and predictable.
-- Chunked responses are supported.
+- The implementation uses HTTP/1.1 over TCP sockets.
+- `delete_()` uses an underscore because `delete` is a reserved C++ keyword.
+- `Connection: close` is used by default to keep behavior simple and predictable.
+- The `Host` header includes the port when a non-default port is used.
 
 ## Limitations
 
 - no HTTPS
+- no automatic redirect following
+- no cookie jar or session persistence
+- no built-in JSON parser
+- no streaming API
 - no HTTP/2 or HTTP/3
-- no automatic redirect handling
-- no cookies or session store
-- no JSON parser built in
-- currently designed for Linux or POSIX-style socket environments
+- currently intended for Linux or POSIX-style socket environments
+
+## Naming Recommendation
+
+For this repository, I would keep the repo name as `libhttp`.
+
+Why:
+
+- it is short and easy to remember
+- the scope can be clarified in the README instead of the repo name
+- renaming to something like `libhttp1` or `libhttp-http1` usually makes the project feel narrower and less polished
+
+A better compromise is:
+
+- keep the repo name `libhttp`
+- use a subtitle like `Small header-only C++ HTTP/1.1 client`
+- clearly state the current limitations near the top of the README
+
+If one day you add HTTPS, redirects, cookies, or broader protocol support, the `libhttp` name will still make sense.
 
 ## License
 
