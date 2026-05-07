@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <openssl/ssl.h>
 
 #include "http_session.h"
 
@@ -70,10 +71,35 @@ namespace http
 
         try
         {
-            detail::send_all(sockfd, request_stream.str());
-            const std::string raw_response = detail::recv_until_close(sockfd);
-            close(sockfd);
-            return detail::parse_response(raw_response, method, url);
+            if (parsed.scheme == "https")
+            {
+                SSL *ssl = detail::tls_wrap_socket(sockfd);
+                detail::send_all_ssl(ssl, request_stream.str());
+                const std::string raw_response = detail::recv_until_close_ssl(ssl);
+                SSL_shutdown(ssl);
+                SSL_free(ssl);
+                close(sockfd);
+                Response resp = detail::parse_response(raw_response, method, url);
+                const std::string enc = resp.header("Content-Encoding");
+                if (!enc.empty() && detail::contains_token_case_insensitive(enc, "gzip") && !resp.body.empty())
+                {
+                    resp.body = detail::decompress_gzip(resp.body);
+                }
+                return resp;
+            }
+            else
+            {
+                detail::send_all(sockfd, request_stream.str());
+                const std::string raw_response = detail::recv_until_close(sockfd);
+                close(sockfd);
+                Response resp = detail::parse_response(raw_response, method, url);
+                const std::string enc = resp.header("Content-Encoding");
+                if (!enc.empty() && detail::contains_token_case_insensitive(enc, "gzip") && !resp.body.empty())
+                {
+                    resp.body = detail::decompress_gzip(resp.body);
+                }
+                return resp;
+            }
         }
         catch (...)
         {
