@@ -1,54 +1,28 @@
 # LibHTTP
 
-Small header-only C++ HTTP client with a requests-like API.
+LibHTTP is a header-only C++ HTTP/1.1 client for plain `http://` requests.
 
-`libhttp` is designed for simple `http://` use cases where you want a light client, direct control, and a familiar interface:
+The goal is to move closer to Python `requests`, but in clear feature targets so the code stays understandable and easy to extend.
 
-- free functions like `http::get(...)`
-- a reusable `http::Client`
-- a `http::Response` with `status_code`, `headers`, `body`, and `text()`
+## Current Target
 
-This project currently focuses on plain HTTP over HTTP/1.1. It is not trying to match the full feature set of Python `requests`.
+This batch focuses on 5 requests-like features:
 
-## Positioning
+1. free request functions such as `get()`, `post()`, `put()`, `delete_()`, `options()`, `head()`, and `patch()`
+2. a reusable `Session` object
+3. query params, headers, form data, raw body, and JSON body
+4. redirect handling
+5. cookie handling
 
-`libhttp` is a good fit if you want:
+## File Layout
 
-- a tiny header-only client
-- no external dependency
-- requests-like ergonomics
-- explicit behavior
+The library is split into smaller headers:
 
-It is not a good fit if you need:
-
-- HTTPS
-- redirects
-- cookies or sessions
-- automatic JSON parsing
-- HTTP/2 or HTTP/3
-
-## Features
-
-- `GET`
-- `POST`
-- `PUT`
-- `DELETE` via `delete_()`
-- `OPTIONS`
-- `HEAD`
-- `PATCH`
-- query parameters
-- custom headers
-- form data
-- raw body payloads
-- reusable client with default headers and timeout
-- chunked response decoding
-- case-insensitive response header lookup
-
-## Files
-
-- `http.h`: main header
-- `http_request.h`: request options
-- `http_response.h`: response object
+- `http.h` as the main include
+- `http_request.h` for request options and shared types
+- `http_response.h` for the response object
+- `http_detail.h` for low-level helpers
+- `http_session.h` for the `Session` class
 
 ## Quick Start
 
@@ -65,15 +39,15 @@ int main() {
 }
 ```
 
-## Examples
+## Requests-Like Usage
 
-### Basic GET
+### GET
 
 ```cpp
 http::Response response = http::get("http://example.com");
 ```
 
-### GET with query parameters
+### GET with params
 
 ```cpp
 http::RequestOptions options;
@@ -93,69 +67,47 @@ options.data["role"] = "student";
 http::Response response = http::post("http://example.com/login", options);
 ```
 
-### POST JSON body
+### POST JSON
 
 ```cpp
 http::RequestOptions options;
-options.headers["Content-Type"] = "application/json";
-options.body = "{\"name\":\"Risman\"}";
+options.json["name"] = "Risman";
+options.json["role"] = "student";
 
 http::Response response = http::post("http://example.com/api/users", options);
 ```
 
-### HEAD request
+### Redirects
 
 ```cpp
-http::Response response = http::head("http://example.com");
+http::RequestOptions options;
+options.allow_redirects = true;
+options.max_redirects = 5;
 
-if (response.has_header("server")) {
-    std::cout << response.header("Server") << '\n';
-}
+http::Response response = http::get("http://example.com/redirect", options);
 ```
 
-### Reusable client
+### Cookies
 
 ```cpp
-#include <iostream>
-#include "http.h"
+http::RequestOptions options;
+options.cookies["theme"] = "light";
 
-int main() {
-    http::Client client("http://example.com");
-    client.set_header("User-Agent", "my-client/1.0");
-    client.set_timeout(5);
-
-    http::RequestOptions options;
-    options.params["page"] = "2";
-
-    http::Response response = client.get("/articles", options);
-    std::cout << response.text() << '\n';
-}
+http::Response response = http::get("http://example.com", options);
+std::string session_id = response.cookie("session_id");
 ```
 
-## API
+### Session
 
-### `http::RequestOptions`
+```cpp
+http::Session session("http://example.com");
+session.set_header("User-Agent", "session-demo/1.0");
+session.set_cookie("visitor", "true");
 
-- `headers`: custom request headers
-- `params`: query string parameters
-- `data`: `application/x-www-form-urlencoded` form fields
-- `body`: raw request body
-- `timeout_seconds`: socket timeout in seconds
+http::Response response = session.get("/articles");
+```
 
-### `http::Response`
-
-- `status_code`
-- `reason`
-- `headers`
-- `body`
-- `url`
-- `method`
-- `ok()`
-- `text()`
-- `content()`
-- `header(key)`
-- `has_header(key)`
-- `is_redirect()`
+## API Overview
 
 ### Free Functions
 
@@ -168,11 +120,39 @@ int main() {
 - `http::head(url, options)`
 - `http::patch(url, options)`
 
-### `http::Client`
+### RequestOptions
 
-- `Client()`
-- `Client(base_url)`
-- `Client(base_url, headers, timeout_seconds)`
+- `headers`
+- `params`
+- `data`
+- `json`
+- `cookies`
+- `body`
+- `timeout_seconds`
+- `allow_redirects`
+- `max_redirects`
+
+### Response
+
+- `status_code`
+- `reason`
+- `headers`
+- `cookies`
+- `body`
+- `url`
+- `method`
+- `history`
+- `ok()`
+- `text()`
+- `content()`
+- `header(key)`
+- `has_header(key)`
+- `cookie(key)`
+- `is_redirect()`
+- `redirected()`
+
+### Session
+
 - `set_base_url(url)`
 - `get_base_url()`
 - `set_timeout(seconds)`
@@ -180,6 +160,9 @@ int main() {
 - `set_header(key, value)`
 - `set_headers(headers)`
 - `headers()`
+- `set_cookie(key, value)`
+- `cookies()`
+- `clear_cookies()`
 - `request(method, path, options)`
 - `get(path, options)`
 - `post(path, options)`
@@ -191,39 +174,25 @@ int main() {
 
 ## Notes
 
-- Only `http://` URLs are accepted.
-- The implementation uses HTTP/1.1 over TCP sockets.
-- `delete_()` uses an underscore because `delete` is a reserved C++ keyword.
-- `Connection: close` is used by default to keep behavior simple and predictable.
-- The `Host` header includes the port when a non-default port is used.
+- only `http://` URLs are supported
+- this library uses HTTP/1.1 over plain TCP sockets
+- `delete_()` uses an underscore because `delete` is a reserved C++ keyword
+- `Client` is available as an alias of `Session`
+- chunked responses are supported
 
-## Limitations
+## Current Limitations
 
-- no HTTPS
-- no automatic redirect following
-- no cookie jar or session persistence
-- no built-in JSON parser
-- no streaming API
-- no HTTP/2 or HTTP/3
-- currently intended for Linux or POSIX-style socket environments
+This is still not fully equal to Python `requests`.
 
-## Naming Recommendation
+Still missing for later targets:
 
-For this repository, I would keep the repo name as `libhttp`.
-
-Why:
-
-- it is short and easy to remember
-- the scope can be clarified in the README instead of the repo name
-- renaming to something like `libhttp1` or `libhttp-http1` usually makes the project feel narrower and less polished
-
-A better compromise is:
-
-- keep the repo name `libhttp`
-- use a subtitle like `Small header-only C++ HTTP/1.1 client`
-- clearly state the current limitations near the top of the README
-
-If one day you add HTTPS, redirects, cookies, or broader protocol support, the `libhttp` name will still make sense.
+- authentication helpers such as basic auth
+- multipart file upload
+- automatic JSON parsing
+- proxy support
+- connection pooling
+- retry helpers
+- streaming download API
 
 ## License
 
