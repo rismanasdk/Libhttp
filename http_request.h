@@ -6,12 +6,21 @@
 
 namespace http {
 
+using Headers = std::map<std::string, std::string>;
+using Params = std::map<std::string, std::string>;
+using Cookies = std::map<std::string, std::string>;
+using Json = std::map<std::string, std::string>;
+
 struct RequestOptions {
-    std::map<std::string, std::string> headers;
-    std::map<std::string, std::string> params;
-    std::map<std::string, std::string> data;
+    Headers headers;
+    Params params;
+    Params data;
+    Json json;
+    Cookies cookies;
     std::string body;
     int timeout_seconds = 10;
+    bool allow_redirects = true;
+    int max_redirects = 5;
 };
 
 }  // namespace http
