@@ -1,6 +1,7 @@
 #ifndef LIBHTTP_HTTP_H
 #define LIBHTTP_HTTP_H
 
+#include <fstream>
 #include <sstream>
 #include <string>
 
@@ -24,6 +25,10 @@ inline Response request_once(const std::string& method, const std::string& url, 
     }
     if (options.headers.find("Connection") == options.headers.end()) {
         options.headers["Connection"] = "close";
+    }
+    if (!options.auth_username.empty() && options.headers.find("Authorization") == options.headers.end()) {
+        options.headers["Authorization"] =
+            detail::build_basic_auth_header(options.auth_username, options.auth_password);
     }
     if (!options.cookies.empty() && options.headers.find("Cookie") == options.headers.end()) {
         options.headers["Cookie"] = detail::build_cookie_header(options.cookies);
@@ -59,7 +64,17 @@ inline Response request(const std::string& method, const std::string& url, Reque
     std::string current_url = url;
 
     for (int redirects = 0;; ++redirects) {
-        response = request_once(current_method, current_url, options);
+        for (int attempt = 0;; ++attempt) {
+            try {
+                response = request_once(current_method, current_url, options);
+                break;
+            } catch (...) {
+                if (attempt >= options.retry_count) {
+                    throw;
+                }
+                detail::sleep_retry_delay(options.retry_delay_ms);
+            }
+        }
 
         if (!options.allow_redirects || !detail::is_redirect_status(response.status_code)) {
             break;
@@ -111,6 +126,21 @@ inline Response head(const std::string& url, RequestOptions options = {}) {
 
 inline Response patch(const std::string& url, RequestOptions options = {}) {
     return request("PATCH", url, options);
+}
+
+inline bool download(const std::string& url, const std::string& output_path, RequestOptions options = {}) {
+    const Response response = get(url, options);
+    if (!response.ok()) {
+        return false;
+    }
+
+    std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
+    if (!output.is_open()) {
+        return false;
+    }
+
+    output.write(response.body.data(), static_cast<std::streamsize>(response.body.size()));
+    return output.good();
 }
 
 inline Response Session::request(const std::string& method, const std::string& path, RequestOptions options) {
