@@ -4,15 +4,23 @@ LibHTTP is a header-only C++ HTTP/1.1 client for plain `http://` requests.
 
 The goal is to move closer to Python `requests`, but in clear feature targets so the code stays understandable and easy to extend.
 
-## Current Target
+## Current Progress
 
-This batch focuses on 5 requests-like features:
+Target 1:
 
 1. free request functions such as `get()`, `post()`, `put()`, `delete_()`, `options()`, `head()`, and `patch()`
 2. a reusable `Session` object
 3. query params, headers, form data, raw body, and JSON body
 4. redirect handling
 5. cookie handling
+
+Target 2:
+
+1. basic auth
+2. multipart file upload
+3. retry options
+4. simple JSON parsing from response body
+5. download helper
 
 ## File Layout
 
@@ -77,6 +85,26 @@ options.json["role"] = "student";
 http::Response response = http::post("http://example.com/api/users", options);
 ```
 
+### Basic auth
+
+```cpp
+http::RequestOptions options;
+options.auth_username = "demo";
+options.auth_password = "secret";
+
+http::Response response = http::get("http://example.com/private", options);
+```
+
+### Multipart upload
+
+```cpp
+http::RequestOptions options;
+options.data["title"] = "notes";
+options.files["file"] = "note.txt";
+
+http::Response response = http::post("http://example.com/upload", options);
+```
+
 ### Redirects
 
 ```cpp
@@ -97,14 +125,39 @@ http::Response response = http::get("http://example.com", options);
 std::string session_id = response.cookie("session_id");
 ```
 
+### Retry
+
+```cpp
+http::RequestOptions options;
+options.retry_count = 3;
+options.retry_delay_ms = 200;
+
+http::Response response = http::get("http://example.com", options);
+```
+
 ### Session
 
 ```cpp
 http::Session session("http://example.com");
 session.set_header("User-Agent", "session-demo/1.0");
 session.set_cookie("visitor", "true");
+session.set_basic_auth("demo", "secret");
 
 http::Response response = session.get("/articles");
+```
+
+### Response JSON helper
+
+```cpp
+http::Response response = http::get("http://example.com/user");
+http::Json data = response.json();
+std::string name = data["name"];
+```
+
+### Download helper
+
+```cpp
+bool ok = http::download("http://example.com/file.txt", "saved.txt");
 ```
 
 ## API Overview
@@ -119,6 +172,7 @@ http::Response response = session.get("/articles");
 - `http::options(url, options)`
 - `http::head(url, options)`
 - `http::patch(url, options)`
+- `http::download(url, output_path, options)`
 
 ### RequestOptions
 
@@ -126,11 +180,16 @@ http::Response response = session.get("/articles");
 - `params`
 - `data`
 - `json`
+- `files`
 - `cookies`
 - `body`
+- `auth_username`
+- `auth_password`
 - `timeout_seconds`
 - `allow_redirects`
 - `max_redirects`
+- `retry_count`
+- `retry_delay_ms`
 
 ### Response
 
@@ -145,11 +204,13 @@ http::Response response = session.get("/articles");
 - `ok()`
 - `text()`
 - `content()`
+- `lines()`
 - `header(key)`
 - `has_header(key)`
 - `cookie(key)`
 - `is_redirect()`
 - `redirected()`
+- `json()`
 
 ### Session
 
@@ -161,6 +222,7 @@ http::Response response = session.get("/articles");
 - `set_headers(headers)`
 - `headers()`
 - `set_cookie(key, value)`
+- `set_basic_auth(username, password)`
 - `cookies()`
 - `clear_cookies()`
 - `request(method, path, options)`
@@ -171,6 +233,7 @@ http::Response response = session.get("/articles");
 - `options(path, options)`
 - `head(path, options)`
 - `patch(path, options)`
+- `download(path, output_path, options)`
 
 ## Notes
 
@@ -179,6 +242,7 @@ http::Response response = session.get("/articles");
 - `delete_()` uses an underscore because `delete` is a reserved C++ keyword
 - `Client` is available as an alias of `Session`
 - chunked responses are supported
+- `Response::json()` currently supports simple flat JSON objects
 
 ## Current Limitations
 
@@ -186,13 +250,11 @@ This is still not fully equal to Python `requests`.
 
 Still missing for later targets:
 
-- authentication helpers such as basic auth
-- multipart file upload
-- automatic JSON parsing
 - proxy support
 - connection pooling
-- retry helpers
 - streaming download API
+- richer JSON support than flat key-value objects
+- multipart metadata such as custom content types per file
 
 ## License
 
