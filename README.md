@@ -29,6 +29,8 @@ The goal is to move closer to Python `requests`, but in clear feature targets so
 3. **enhanced JSON support** with full parser and pretty printing
 4. **status code helpers** and custom exceptions
 5. **advanced authentication** (Bearer, API Key, Custom, OAuth2)
+6. **HTTPS/TLS support** with automatic certificate handling
+7. **automatic gzip decompression** for compressed responses
 
 ## File Layout
 
@@ -219,7 +221,7 @@ auto progress = [](size_t current, size_t total) {
 };
 
 http::RequestOptions options;
-options.chunk_size = 4096;  
+options.chunk_size = 4096;
 
 bool ok = session.stream_download(
     "/large-file",
@@ -241,7 +243,7 @@ obj.object_value["name"] = http::json::Value("John");
 obj.object_value["age"] = http::json::Value(30);
 
 std::string compact = obj.dump();
-std::string pretty = obj.dump(2); 
+std::string pretty = obj.dump(2);
 
 if (json.is_object()) {
     auto val = json.object_value["key"];
@@ -258,11 +260,11 @@ if (json.is_array()) {
 ```cpp
 #include "http_status.h"
 
-int code = http::status::NOT_FOUND;     
-int code = http::status::OK;            
-int code = http::status::INTERNAL_SERVER_ERROR;  
+int code = http::status::NOT_FOUND;
+int code = http::status::OK;
+int code = http::status::INTERNAL_SERVER_ERROR;
 
-std::string reason = http::status::reason_phrase(404);  
+std::string reason = http::status::reason_phrase(404);
 
 bool is_ok = http::status::is_success(200);
 bool is_error = http::status::is_client_error(400);
@@ -286,7 +288,7 @@ bool is_text = response.is_text();
 
 size_t length = response.content_length();
 
-response.raise_for_status(); 
+response.raise_for_status();
 ```
 
 ### Exception Handling
@@ -344,9 +346,9 @@ try {
 - `stream` (v2.0)
 - `chunk_size` (v2.0)
 - `progress_callback` (v2.0)
-- `verify_ssl` (v2.0)
-- `ssl_cert_path` (v2.0)
-- `ssl_key_path` (v2.0)
+- `verify_ssl` (v2.0, reserved for future custom certificate support)
+- `ssl_cert_path` (v2.0, reserved for future custom certificate support)
+- `ssl_key_path` (v2.0, reserved for future custom certificate support)
 
 ### Response
 
@@ -413,10 +415,21 @@ try {
 - `download(path, output_path, options)`
 - `stream_download(path, output_path, progress_callback, options)` (v2.0)
 
+## HTTPS/TLS Support
+
+```cpp
+http::Response response = http::get("https://api.github.com/users/github");
+
+http::Session session("https://secure.example.com");
+http::Response resp = session.get("/api/data");
+```
+
+HTTPS requests are automatically detected and use OpenSSL for TLS negotiation. Gzip-compressed responses are automatically decompressed.
+
 ## Notes
 
-- only `http://` URLs are supported
-- this library uses HTTP/1.1 over plain TCP sockets
+- `http://` and `https://` URLs are supported
+- this library uses HTTP/1.1 over TCP sockets (plain for HTTP, TLS for HTTPS)
 - `delete_()` uses an underscore because `delete` is a reserved C++ keyword
 - `Client` is available as an alias of `Session`
 - chunked responses are supported
@@ -425,6 +438,16 @@ try {
 - proxy support is available for HTTP/HTTPS/SOCKS protocols
 - streaming download API supports progress callbacks
 - advanced authentication methods include Bearer tokens, API keys, and custom schemes
+- HTTPS/TLS uses OpenSSL library
+- gzip decompression uses zlib library
+
+## Build and Link
+
+To compile with HTTPS and gzip support, link against OpenSSL and zlib:
+
+```bash
+g++ -std=c++17 -Wall -Wextra main.cc -o http_test -lssl -lcrypto -lz
+```
 
 ## Current Limitations
 
@@ -433,7 +456,6 @@ This library is not yet fully equal to Python `requests`, but v2.0 addresses man
 Still missing for future targets:
 
 - connection pooling / keep-alive
-- HTTPS support (currently HTTP only)
 - automatic cookie jar persistence
 - multipart metadata such as custom content types per file
 - WebSocket support
