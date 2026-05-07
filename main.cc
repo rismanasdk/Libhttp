@@ -99,6 +99,42 @@ int main()
         std::cout << "Custom auth set: Digest username=user,realm=test" << std::endl;
         std::cout << std::endl;
 
+        // Example 10: Streaming Response Content
+        std::cout << "=== Streaming Response (iter_content) ===" << std::endl;
+        response = session.get("/json", options);
+        size_t chunk_count = 0;
+        response.iter_content(100, [&chunk_count](const std::string &chunk)
+                              {
+            chunk_count++;
+            if (chunk_count <= 3)
+            {
+                std::cout << "Chunk " << chunk_count << " size: " << chunk.size() << " bytes" << std::endl;
+            }
+            return true; });
+        std::cout << "Total chunks: " << chunk_count << std::endl;
+        std::cout << std::endl;
+
+        // Example 11: Streaming Lines
+        std::cout << "=== Streaming Lines (iter_lines) ===" << std::endl;
+        response = session.get("/json", options);
+        size_t line_count = 0;
+        response.iter_lines([&line_count](const std::string &line)
+                            {
+            line_count++;
+            if (line_count <= 3)
+            {
+                std::cout << "Line " << line_count << ": " << (line.size() > 50 ? line.substr(0, 50) + "..." : line) << std::endl;
+            }
+            return true; });
+        std::cout << "Total lines: " << line_count << std::endl;
+        std::cout << std::endl;
+
+        // Example 12: Request Timing
+        std::cout << "=== Request Timing (elapsed) ===" << std::endl;
+        response = session.get("/json", options);
+        std::cout << "Request elapsed time: " << response.elapsed << " seconds" << std::endl;
+        std::cout << std::endl;
+
         // Example 10: Error Handling
         std::cout << "=== Error Handling ===" << std::endl;
         try
