@@ -16,6 +16,9 @@
 #include <thread>
 #include <unistd.h>
 #include <functional>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <zlib.h>
 
 #include "http_response.h"
 
@@ -286,17 +289,31 @@ namespace http
 
         inline ParsedUrl parse_url(const std::string &url)
         {
-            const std::string prefix = "http://";
-            if (url.compare(0, prefix.size(), prefix) != 0)
+            ParsedUrl parsed;
+            parsed.port = "80";
+            parsed.scheme = "http";
+
+            std::string remaining;
+            const std::string http_prefix = "http://";
+            const std::string https_prefix = "https://";
+
+            if (url.compare(0, http_prefix.size(), http_prefix) == 0)
             {
-                throw std::runtime_error("Only http:// URLs are supported.");
+                remaining = url.substr(http_prefix.size());
+                parsed.scheme = "http";
+                parsed.port = "80";
+            }
+            else if (url.compare(0, https_prefix.size(), https_prefix) == 0)
+            {
+                remaining = url.substr(https_prefix.size());
+                parsed.scheme = "https";
+                parsed.port = "443";
+            }
+            else
+            {
+                throw std::runtime_error("Only http:// and https:// URLs are supported.");
             }
 
-            ParsedUrl parsed;
-            parsed.scheme = "http";
-            parsed.port = "80";
-
-            const std::string remaining = url.substr(prefix.size());
             const std::size_t slash_pos = remaining.find('/');
             const std::string host_port = slash_pos == std::string::npos ? remaining : remaining.substr(0, slash_pos);
             parsed.target = slash_pos == std::string::npos ? "/" : remaining.substr(slash_pos);
@@ -328,6 +345,147 @@ namespace http
             }
 
             return parsed.host + ":" + parsed.port;
+        }
+
+        // Initialize OpenSSL and provide a shared SSL_CTX
+        inline SSL_CTX *global_ssl_ctx()
+        {
+            static SSL_CTX *ctx = nullptr;
+            if (!ctx)
+            {
+                SSL_library_init();
+                SSL_load_error_strings();
+                const SSL_METHOD *method = TLS_client_method();
+                ctx = SSL_CTX_new(method);
+                if (!ctx)
+                {
+                    throw std::runtime_error("Failed to create SSL_CTX");
+                }
+            }
+            return ctx;
+        }
+
+        // Wrap socket with TLS and perform handshake
+        inline SSL *tls_wrap_socket(int sockfd)
+        {
+            SSL_CTX *ctx = global_ssl_ctx();
+            SSL *ssl = SSL_new(ctx);
+            if (!ssl)
+            {
+                throw std::runtime_error("Failed to create SSL object");
+            }
+            SSL_set_fd(ssl, sockfd);
+            if (SSL_connect(ssl) != 1)
+            {
+                long err = ERR_get_error();
+                SSL_free(ssl);
+                throw std::runtime_error(std::string("TLS handshake failed: ") + ERR_error_string(err, nullptr));
+            }
+            return ssl;
+        }
+
+        inline void send_all_ssl(SSL *ssl, const std::string &request_text)
+        {
+            size_t sent_total = 0;
+            while (sent_total < request_text.size())
+            {
+                int sent = SSL_write(ssl, request_text.data() + sent_total, static_cast<int>(request_text.size() - sent_total));
+                if (sent <= 0)
+                {
+                    throw std::runtime_error("Failed to send HTTP request over TLS.");
+                }
+                sent_total += static_cast<size_t>(sent);
+            }
+        }
+
+        inline std::string recv_until_close_ssl(SSL *ssl)
+        {
+            std::string response;
+            char buffer[4096];
+            while (true)
+            {
+                int received = SSL_read(ssl, buffer, sizeof(buffer));
+                if (received == 0)
+                    break;
+                if (received < 0)
+                {
+                    int err = SSL_get_error(ssl, received);
+                    if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE)
+                    {
+                        continue;
+                    }
+                    throw std::runtime_error("Failed to receive HTTP response over TLS.");
+                }
+                response.append(buffer, static_cast<size_t>(received));
+            }
+            return response;
+        }
+
+        // Streaming receive into processor (supports plain socket and SSL)
+        inline bool recv_stream_to_processor(int sockfd, SSL *ssl, const std::function<bool(const char *, size_t)> &processor)
+        {
+            char buffer[8192];
+            while (true)
+            {
+                ssize_t received = 0;
+                if (ssl)
+                {
+                    received = SSL_read(ssl, buffer, sizeof(buffer));
+                    if (received <= 0)
+                        break;
+                }
+                else
+                {
+                    received = recv(sockfd, buffer, sizeof(buffer), 0);
+                    if (received <= 0)
+                    {
+                        if (received == 0)
+                            break;
+                        if (errno == EWOULDBLOCK || errno == EAGAIN)
+                            break;
+                        throw std::runtime_error("Failed to receive HTTP response.");
+                    }
+                }
+
+                if (!processor(buffer, static_cast<size_t>(received)))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Decompress gzip data
+        inline std::string decompress_gzip(const std::string &data)
+        {
+            z_stream strm;
+            std::memset(&strm, 0, sizeof(strm));
+            strm.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(data.data()));
+            strm.avail_in = static_cast<uInt>(data.size());
+
+            if (inflateInit2(&strm, 16 + MAX_WBITS) != Z_OK)
+            {
+                throw std::runtime_error("Failed to initialize zlib for gzip decompression");
+            }
+
+            std::string out;
+            char outbuf[8192];
+            int ret;
+            do
+            {
+                strm.next_out = reinterpret_cast<Bytef *>(outbuf);
+                strm.avail_out = sizeof(outbuf);
+                ret = inflate(&strm, Z_NO_FLUSH);
+                if (ret != Z_OK && ret != Z_STREAM_END)
+                {
+                    inflateEnd(&strm);
+                    throw std::runtime_error("Error during gzip decompression");
+                }
+                out.append(outbuf, sizeof(outbuf) - strm.avail_out);
+            } while (ret != Z_STREAM_END);
+
+            inflateEnd(&strm);
+            return out;
         }
 
         inline std::string merge_target_and_query(const std::string &target, const Params &params)
