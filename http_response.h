@@ -3,9 +3,10 @@
 
 #include <algorithm>
 #include <cctype>
-#include <map>
 #include <string>
 #include <vector>
+
+#include "http_request.h"
 
 namespace http {
 
@@ -21,10 +22,12 @@ class Response {
    public:
     int status_code = 0;
     std::string reason;
-    std::map<std::string, std::string> headers;
+    Headers headers;
+    Cookies cookies;
     std::string body;
     std::string url;
     std::string method;
+    std::vector<std::string> history;
 
     bool ok() const {
         return status_code >= 200 && status_code < 300;
@@ -58,8 +61,21 @@ class Response {
         return !header(key).empty();
     }
 
+    std::string cookie(const std::string& key) const {
+        const auto exact = cookies.find(key);
+        if (exact != cookies.end()) {
+            return exact->second;
+        }
+
+        return "";
+    }
+
     bool is_redirect() const {
         return status_code >= 300 && status_code < 400;
+    }
+
+    bool redirected() const {
+        return !history.empty();
     }
 };
 
