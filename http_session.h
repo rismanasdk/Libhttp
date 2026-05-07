@@ -1,6 +1,7 @@
 #ifndef LIBHTTP_SESSION_H
 #define LIBHTTP_SESSION_H
 
+#include <fstream>
 #include <string>
 
 #include "http_detail.h"
@@ -12,6 +13,8 @@ class Session {
     std::string base_url;
     Headers default_headers;
     Cookies cookie_jar;
+    std::string auth_username;
+    std::string auth_password;
     int timeout = 10;
 
     std::string build_url(const std::string& path) const {
@@ -49,6 +52,11 @@ class Session {
 
         if (options.timeout_seconds <= 0) {
             options.timeout_seconds = timeout;
+        }
+
+        if (options.auth_username.empty() && !auth_username.empty()) {
+            options.auth_username = auth_username;
+            options.auth_password = auth_password;
         }
 
         return options;
@@ -90,6 +98,11 @@ class Session {
         return default_headers;
     }
 
+    void set_basic_auth(const std::string& username, const std::string& password) {
+        auth_username = username;
+        auth_password = password;
+    }
+
     void set_cookie(const std::string& key, const std::string& value) {
         cookie_jar[key] = value;
     }
@@ -110,6 +123,21 @@ class Session {
     Response options(const std::string& path, RequestOptions options = {});
     Response head(const std::string& path, RequestOptions options = {});
     Response patch(const std::string& path, RequestOptions options = {});
+
+    bool download(const std::string& path, const std::string& output_path, RequestOptions options = {}) {
+        const Response response = get(path, options);
+        if (!response.ok()) {
+            return false;
+        }
+
+        std::ofstream output(output_path, std::ios::binary | std::ios::trunc);
+        if (!output.is_open()) {
+            return false;
+        }
+
+        output.write(response.body.data(), static_cast<std::streamsize>(response.body.size()));
+        return output.good();
+    }
 };
 
 using Client = Session;
