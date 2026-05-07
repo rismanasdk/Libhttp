@@ -1,6 +1,6 @@
 # LibHTTP
 
-LibHTTP is a header-only C++ HTTP/1.1 client for plain `http://` requests.
+LibHTTP is a header-only C++ HTTP/1.1 client library for `http://` and `https://` requests, designed to be intuitive like Python's `requests` library while maintaining simplicity and performance.
 
 The goal is to move closer to Python `requests`, but in clear feature targets so the code stays understandable and easy to extend.
 
@@ -30,7 +30,9 @@ The goal is to move closer to Python `requests`, but in clear feature targets so
 4. **status code helpers** and custom exceptions
 5. **advanced authentication** (Bearer, API Key, Custom, OAuth2)
 6. **HTTPS/TLS support** with automatic certificate handling
-7. **automatic gzip decompression** for compressed responses
+7. **automatic compression decompression** (gzip, deflate)
+8. **streaming response iteration** (iter_content, iter_lines)
+9. **request timing** (elapsed time tracking)
 
 ## File Layout
 
@@ -310,6 +312,31 @@ try {
 }
 ```
 
+### Streaming Content Iteration
+
+```cpp
+http::Response response = http::get("https://api.example.com/data");
+
+// Iterate response body in chunks
+response.iter_content(4096, [](const std::string& chunk) {
+    std::cout << "Received chunk: " << chunk.size() << " bytes" << std::endl;
+    return true;  // return false to stop iteration
+});
+
+// Iterate response body line by line
+response.iter_lines([](const std::string& line) {
+    std::cout << "Line: " << line << std::endl;
+    return true;  // return false to stop iteration
+});
+```
+
+### Request Timing
+
+```cpp
+http::Response response = http::get("https://api.example.com/data");
+std::cout << "Request took " << response.elapsed << " seconds" << std::endl;
+```
+
 ## API Overview
 
 ### Free Functions
@@ -381,6 +408,9 @@ try {
 - `is_html()` (v2.0)
 - `is_text()` (v2.0)
 - `raise_for_status()` (v2.0)
+- `elapsed` (v2.0) — request duration in seconds
+- `iter_content(chunk_size, processor)` (v2.0) — iterate response body in chunks
+- `iter_lines(processor)` (v2.0) — iterate response body line by line
 
 ### Session
 
@@ -439,26 +469,59 @@ HTTPS requests are automatically detected and use OpenSSL for TLS negotiation. G
 - streaming download API supports progress callbacks
 - advanced authentication methods include Bearer tokens, API keys, and custom schemes
 - HTTPS/TLS uses OpenSSL library
-- gzip decompression uses zlib library
+- automatic decompression supports gzip and deflate formats
+- response streaming with `iter_content()` and `iter_lines()` for memory-efficient processing
+- request elapsed time is tracked automatically in `response.elapsed`
 
 ## Build and Link
 
-To compile with HTTPS and gzip support, link against OpenSSL and zlib:
+To compile with HTTPS and automatic compression support, link against OpenSSL and zlib:
 
 ```bash
 g++ -std=c++17 -Wall -Wextra main.cc -o http_test -lssl -lcrypto -lz
 ```
 
+## Comparison with Python Requests
+
+LibHTTP v2.0 implements most essential features of Python's `requests` library:
+
+| Feature                                | Python requests              | LibHTTP v2.0        | Notes                                |
+| -------------------------------------- | ---------------------------- | ------------------- | ------------------------------------ |
+| GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS | ✅                           | ✅                  | Full HTTP method support             |
+| Query parameters                       | ✅                           | ✅                  | Automatic URL encoding               |
+| Headers & Cookies                      | ✅                           | ✅                  | Case-insensitive header access       |
+| JSON body/parsing                      | ✅                           | ✅                  | Full JSON support via http_json.h    |
+| Form data & files                      | ✅                           | ✅                  | Multipart upload supported           |
+| Basic Authentication                   | ✅                           | ✅                  | Base64 encoding                      |
+| Bearer Token Auth                      | ✅                           | ✅                  | Custom auth support                  |
+| Proxy support                          | ✅                           | ✅                  | HTTP/HTTPS/SOCKS with credentials    |
+| HTTPS/SSL                              | ✅                           | ✅                  | OpenSSL integration                  |
+| Automatic decompression                | ✅ (gzip, deflate, brotli)   | ✅ (gzip, deflate)  | zlib support                         |
+| Response streaming                     | ✅ (iter_content/iter_lines) | ✅                  | iter_content/iter_lines methods      |
+| Status code checking                   | ✅                           | ✅                  | is_success/is_error/raise_for_status |
+| Redirect handling                      | ✅                           | ✅                  | Configurable max_redirects           |
+| Timeouts                               | ✅                           | ✅                  | Per-request timeout                  |
+| Retries with backoff                   | ✅                           | ✅ (manual backoff) | Retry count & delay                  |
+| Session/connection reuse               | ✅                           | ✅ (Session object) | Cookie jar, headers, auth            |
+| Request elapsed time                   | ✅                           | ✅                  | response.elapsed in seconds          |
+| Prepared requests                      | ✅                           | ⚠️                  | Not yet implemented                  |
+| Hooks/callbacks                        | ✅                           | ✅ (partial)        | Progress callbacks for downloads     |
+| Connection pooling                     | ✅                           | ❌                  | Future enhancement                   |
+| Client certificates (mTLS)             | ✅                           | ❌                  | Future enhancement                   |
+| Brotli compression                     | ✅                           | ❌                  | Can be added if needed               |
+
 ## Current Limitations
 
-This library is not yet fully equal to Python `requests`, but v2.0 addresses many gaps:
+This library implements the core features needed for most HTTP applications:
 
-Still missing for future targets:
+Potential future enhancements:
 
-- connection pooling / keep-alive
-- automatic cookie jar persistence
-- multipart metadata such as custom content types per file
+- connection pooling / keep-alive for better performance
+- client certificate (mTLS) support
+- automatic cookie jar persistence to disk
+- Brotli compression support
 - WebSocket support
+- prepared requests for advanced use cases
 
 ## License
 
