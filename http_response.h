@@ -3,9 +3,11 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <functional>
 
 #include "http_request.h"
 
@@ -31,6 +33,7 @@ namespace http
         std::string url;
         std::string method;
         std::vector<std::string> history;
+        double elapsed = 0.0; // request duration in seconds
 
         bool ok() const
         {
@@ -243,6 +246,41 @@ namespace http
             if (is_error())
             {
                 throw std::runtime_error("HTTP " + std::to_string(status_code) + " " + reason);
+            }
+        }
+
+        // Iterate over response body in chunks
+        void iter_content(size_t chunk_size, const std::function<bool(const std::string &)> &processor) const
+        {
+            if (body.empty())
+            {
+                return;
+            }
+            for (size_t i = 0; i < body.size(); i += chunk_size)
+            {
+                const size_t len = std::min(chunk_size, body.size() - i);
+                if (!processor(body.substr(i, len)))
+                {
+                    break;
+                }
+            }
+        }
+
+        // Iterate over response body line by line
+        void iter_lines(const std::function<bool(const std::string &)> &processor) const
+        {
+            std::istringstream stream(body);
+            std::string line;
+            while (std::getline(stream, line))
+            {
+                if (!line.empty() && line.back() == '\r')
+                {
+                    line.pop_back();
+                }
+                if (!processor(line))
+                {
+                    break;
+                }
             }
         }
     };
