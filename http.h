@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <chrono>
 #include <openssl/ssl.h>
 
 #include "http_session.h"
@@ -13,6 +14,8 @@ namespace http
 
     inline Response request_once(const std::string &method, const std::string &url, RequestOptions options = {})
     {
+        auto start_time = std::chrono::high_resolution_clock::now();
+
         const detail::ParsedUrl parsed = detail::parse_url(url);
         const std::string target = detail::merge_target_and_query(parsed.target, options.params);
         const std::string body = detail::prepare_body(options);
@@ -80,11 +83,22 @@ namespace http
                 SSL_free(ssl);
                 close(sockfd);
                 Response resp = detail::parse_response(raw_response, method, url);
+
                 const std::string enc = resp.header("Content-Encoding");
-                if (!enc.empty() && detail::contains_token_case_insensitive(enc, "gzip") && !resp.body.empty())
+                if (!enc.empty() && !resp.body.empty())
                 {
-                    resp.body = detail::decompress_gzip(resp.body);
+                    if (detail::contains_token_case_insensitive(enc, "gzip"))
+                    {
+                        resp.body = detail::decompress_gzip(resp.body);
+                    }
+                    else if (detail::contains_token_case_insensitive(enc, "deflate"))
+                    {
+                        resp.body = detail::decompress_deflate(resp.body);
+                    }
                 }
+
+                auto end_time = std::chrono::high_resolution_clock::now();
+                resp.elapsed = std::chrono::duration<double>(end_time - start_time).count();
                 return resp;
             }
             else
@@ -93,11 +107,22 @@ namespace http
                 const std::string raw_response = detail::recv_until_close(sockfd);
                 close(sockfd);
                 Response resp = detail::parse_response(raw_response, method, url);
+
                 const std::string enc = resp.header("Content-Encoding");
-                if (!enc.empty() && detail::contains_token_case_insensitive(enc, "gzip") && !resp.body.empty())
+                if (!enc.empty() && !resp.body.empty())
                 {
-                    resp.body = detail::decompress_gzip(resp.body);
+                    if (detail::contains_token_case_insensitive(enc, "gzip"))
+                    {
+                        resp.body = detail::decompress_gzip(resp.body);
+                    }
+                    else if (detail::contains_token_case_insensitive(enc, "deflate"))
+                    {
+                        resp.body = detail::decompress_deflate(resp.body);
+                    }
                 }
+
+                auto end_time = std::chrono::high_resolution_clock::now();
+                resp.elapsed = std::chrono::duration<double>(end_time - start_time).count();
                 return resp;
             }
         }
