@@ -4,13 +4,16 @@
 #include <arpa/inet.h>
 #include <cctype>
 #include <cerrno>
+#include <chrono>
 #include <cstring>
+#include <fstream>
 #include <netdb.h>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <thread>
 #include <unistd.h>
 
 #include "http_response.h"
@@ -117,6 +120,36 @@ inline std::string url_encode(const std::string& value) {
     return result;
 }
 
+inline std::string base64_encode(const std::string& value) {
+    static const char* table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string result;
+    int val = 0;
+    int valb = -6;
+
+    for (unsigned char ch : value) {
+        val = (val << 8) + ch;
+        valb += 8;
+        while (valb >= 0) {
+            result.push_back(table[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+
+    if (valb > -6) {
+        result.push_back(table[((val << 8) >> (valb + 8)) & 0x3F]);
+    }
+
+    while (result.size() % 4 != 0) {
+        result.push_back('=');
+    }
+
+    return result;
+}
+
+inline std::string build_basic_auth_header(const std::string& username, const std::string& password) {
+    return "Basic " + base64_encode(username + ":" + password);
+}
+
 inline std::string build_query(const Params& params) {
     std::string query;
     bool first = true;
@@ -149,6 +182,48 @@ inline std::string build_cookie_header(const Cookies& cookies) {
     }
 
     return value;
+}
+
+inline std::string read_file_text(const std::string& path) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open upload file: " + path);
+    }
+
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+inline std::string filename_from_path(const std::string& path) {
+    const std::size_t slash_pos = path.find_last_of("/\\");
+    return slash_pos == std::string::npos ? path : path.substr(slash_pos + 1);
+}
+
+inline std::string multipart_boundary() {
+    return "----libhttp-boundary-20260507";
+}
+
+inline std::string build_multipart_body(const Params& data, const Files& files, const std::string& boundary) {
+    std::string body;
+
+    for (const auto& field : data) {
+        body += "--" + boundary + "\r\n";
+        body += "Content-Disposition: form-data; name=\"" + field.first + "\"\r\n\r\n";
+        body += field.second + "\r\n";
+    }
+
+    for (const auto& field : files) {
+        body += "--" + boundary + "\r\n";
+        body += "Content-Disposition: form-data; name=\"" + field.first + "\"; filename=\"" +
+                filename_from_path(field.second) + "\"\r\n";
+        body += "Content-Type: application/octet-stream\r\n\r\n";
+        body += read_file_text(field.second);
+        body += "\r\n";
+    }
+
+    body += "--" + boundary + "--\r\n";
+    return body;
 }
 
 inline bool contains_token_case_insensitive(const std::string& value, const std::string& token) {
@@ -425,6 +500,12 @@ inline std::string prepare_body(RequestOptions& options) {
         return options.body;
     }
 
+    if (!options.files.empty()) {
+        const std::string boundary = multipart_boundary();
+        options.headers["Content-Type"] = "multipart/form-data; boundary=" + boundary;
+        return build_multipart_body(options.data, options.files, boundary);
+    }
+
     if (!options.json.empty()) {
         if (options.headers.find("Content-Type") == options.headers.end()) {
             options.headers["Content-Type"] = "application/json";
@@ -440,6 +521,12 @@ inline std::string prepare_body(RequestOptions& options) {
     }
 
     return "";
+}
+
+inline void sleep_retry_delay(int retry_delay_ms) {
+    if (retry_delay_ms > 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay_ms));
+    }
 }
 
 }  // namespace detail
