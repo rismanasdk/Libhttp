@@ -488,6 +488,39 @@ namespace http
             return out;
         }
 
+        // Decompress deflate compressed data
+        inline std::string decompress_deflate(const std::string &data)
+        {
+            z_stream strm;
+            std::memset(&strm, 0, sizeof(strm));
+            strm.next_in = reinterpret_cast<Bytef *>(const_cast<char *>(data.data()));
+            strm.avail_in = static_cast<uInt>(data.size());
+
+            if (inflateInit2(&strm, MAX_WBITS) != Z_OK)
+            {
+                throw std::runtime_error("Failed to initialize zlib for deflate decompression");
+            }
+
+            std::string out;
+            char outbuf[8192];
+            int ret;
+            do
+            {
+                strm.next_out = reinterpret_cast<Bytef *>(outbuf);
+                strm.avail_out = sizeof(outbuf);
+                ret = inflate(&strm, Z_NO_FLUSH);
+                if (ret != Z_OK && ret != Z_STREAM_END)
+                {
+                    inflateEnd(&strm);
+                    throw std::runtime_error("Error during deflate decompression");
+                }
+                out.append(outbuf, sizeof(outbuf) - strm.avail_out);
+            } while (ret != Z_STREAM_END);
+
+            inflateEnd(&strm);
+            return out;
+        }
+
         inline std::string merge_target_and_query(const std::string &target, const Params &params)
         {
             if (params.empty())
