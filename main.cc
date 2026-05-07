@@ -3,15 +3,16 @@
 #include "http.h"
 
 int main() {
+    http::Session session("http://example.com");
+    session.set_header("User-Agent", "requests-like-demo/1.0");
+    session.set_cookie("visitor", "true");
+
     http::RequestOptions options;
     options.params["page"] = "1";
-    options.headers["Accept"] = "text/html";
-
-    http::Client client("http://example.com");
-    client.set_header("User-Agent", "requests-like-demo/1.0");
+    options.allow_redirects = true;
 
     try {
-        http::Response response = client.get("/", options);
+        http::Response response = session.get("/", options);
         std::cout << response.status_code << '\n';
         std::cout << response.reason << '\n';
         std::cout << response.text() << '\n';
