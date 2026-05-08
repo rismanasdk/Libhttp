@@ -13,10 +13,5 @@
       "name": "zlib",
       "version>=": "1.2.0"
     }
-  ],
-  "features": {
-    "core": {
-      "description": "Core HTTP client functionality"
-    }
-  }
+  ]
 }
