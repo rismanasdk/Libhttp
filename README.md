@@ -55,6 +55,46 @@ The library is split into smaller headers:
 - `http_json.h` for full JSON parsing and serialization
 - `http_stream.h` for streaming download support
 
+## Building and Running
+
+### Prerequisites
+
+Install the required development libraries:
+
+```bash
+# On Ubuntu/Debian
+sudo apt-get install libssl-dev zlib1g-dev
+
+# On macOS
+brew install openssl zlib
+```
+
+### Compilation
+
+To compile a program that uses LibHTTP, you need to link against OpenSSL and zlib libraries:
+
+```bash
+g++ your_program.cc -o your_program -lssl -lcrypto -lz
+```
+
+Example with the testing program:
+
+```bash
+g++ testing.cc -o testing -lssl -lcrypto -lz
+./testing
+```
+
+### Compiler Flags Explanation
+
+- `-lssl` - Links OpenSSL SSL/TLS library
+- `-lcrypto` - Links OpenSSL cryptography library
+- `-lz` - Links zlib compression library
+
+These libraries are required for:
+
+- **HTTPS connections** (TLS/SSL handshake, SNI support)
+- **Automatic compression decompression** (gzip, deflate)
+
 ## Quick Start
 
 ```cpp
