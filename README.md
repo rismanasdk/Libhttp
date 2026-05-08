@@ -55,6 +55,64 @@ The library is split into smaller headers:
 - `http_json.h` for full JSON parsing and serialization
 - `http_stream.h` for streaming download support
 
+## Installation
+
+### Option 1: Using vcpkg (Recommended)
+
+vcpkg makes it easy to install LibHTTP as a package dependency.
+
+```bash
+# Add libhttp to your vcpkg.json
+{
+  "dependencies": [ "libhttp" ]
+}
+```
+
+Then install:
+
+```bash
+vcpkg install
+```
+
+In your `CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.15)
+project(MyApp)
+
+find_package(libhttp REQUIRED)
+
+add_executable(myapp main.cpp)
+target_link_libraries(myapp PRIVATE libhttp::libhttp)
+```
+
+### Option 2: Using CMake (Direct)
+
+```bash
+# Clone or include the library
+git clone https://github.com/your-username/lib-http
+
+# In your project's CMakeLists.txt
+add_subdirectory(lib-http)
+
+add_executable(myapp main.cpp)
+target_link_libraries(myapp PRIVATE libhttp::libhttp)
+```
+
+### Option 3: Header-Only (Manual)
+
+Simply include the header files directly in your project:
+
+```cpp
+#include "http.h"
+```
+
+Ensure you link against OpenSSL and zlib:
+
+```bash
+g++ your_program.cc -o your_program -lssl -lcrypto -lz
+```
+
 ## Building and Running
 
 ### Prerequisites
@@ -82,6 +140,75 @@ Example with the testing program:
 ```bash
 g++ testing.cc -o testing -lssl -lcrypto -lz
 ./testing
+```
+
+## Installation via Package Manager
+
+LibHTTP can be packaged for modern C++ package managers instead of being copied manually.
+
+### Option 1: CMake install + `find_package`
+
+If you want to install from this repository directly:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+cmake --install build --prefix ./install
+```
+
+Then in another CMake project:
+
+```cmake
+find_package(libhttp REQUIRED)
+target_link_libraries(your_app PRIVATE libhttp::libhttp)
+```
+
+### Option 2: Conan
+
+This repository now includes a `conanfile.py`, so you can consume it as a Conan package.
+
+Example consumer flow:
+
+```bash
+conan create . --build=missing
+```
+
+Example `CMakeLists.txt`:
+
+```cmake
+find_package(libhttp REQUIRED)
+target_link_libraries(your_app PRIVATE libhttp::libhttp)
+```
+
+Example `conanfile.txt` in a consumer project:
+
+```ini
+[requires]
+libhttp/2.0.0
+
+[generators]
+CMakeDeps
+CMakeToolchain
+```
+
+### Option 3: vcpkg
+
+This repository also includes starter files for a vcpkg port:
+
+- `vcpkg.json`
+- `portfile.cmake`
+
+Before publishing to a real vcpkg registry, update:
+
+- GitHub repository URL in `portfile.cmake`
+- release tag
+- SHA512 checksum
+- homepage field in `vcpkg.json`
+
+After that, users can install it with:
+
+```bash
+vcpkg install libhttp
 ```
 
 ### Compiler Flags Explanation
