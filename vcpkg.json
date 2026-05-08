@@ -1,0 +1,22 @@
+{
+  "name": "libhttp",
+  "version": "2.0.0",
+  "description": "A header-only C++ HTTP/1.1 client library supporting http and https requests, inspired by Python's requests library",
+  "homepage": "https://github.com/rismanasdk/libhttp",
+  "license": "MIT",
+  "dependencies": [
+    {
+      "name": "openssl",
+      "version>=": "1.1.0"
+    },
+    {
+      "name": "zlib",
+      "version>=": "1.2.0"
+    }
+  ],
+  "features": {
+    "core": {
+      "description": "Core HTTP client functionality"
+    }
+  }
+}
