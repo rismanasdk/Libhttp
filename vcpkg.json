@@ -5,13 +5,7 @@
   "homepage": "https://github.com/rismanasdk/libhttp",
   "license": "MIT",
   "dependencies": [
-    {
-      "name": "openssl",
-      "version>=": "1.1.0"
-    },
-    {
-      "name": "zlib",
-      "version>=": "1.2.0"
-    }
+    "openssl",
+    "zlib"
   ]
 }
