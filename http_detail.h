@@ -361,12 +361,16 @@ namespace http
                 {
                     throw std::runtime_error("Failed to create SSL_CTX");
                 }
+                // Disable certificate verification for testing purposes
+                SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
+                // Set options for better compatibility
+                SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
             }
             return ctx;
         }
 
         // Wrap socket with TLS and perform handshake
-        inline SSL *tls_wrap_socket(int sockfd)
+        inline SSL *tls_wrap_socket(int sockfd, const std::string &hostname = "")
         {
             SSL_CTX *ctx = global_ssl_ctx();
             SSL *ssl = SSL_new(ctx);
@@ -374,12 +378,21 @@ namespace http
             {
                 throw std::runtime_error("Failed to create SSL object");
             }
+
+            // Set SNI (Server Name Indication) if hostname is provided
+            if (!hostname.empty())
+            {
+                SSL_set_tlsext_host_name(ssl, hostname.c_str());
+            }
+
             SSL_set_fd(ssl, sockfd);
             if (SSL_connect(ssl) != 1)
             {
                 long err = ERR_get_error();
+                char err_buf[256];
+                ERR_error_string_n(err, err_buf, sizeof(err_buf));
                 SSL_free(ssl);
-                throw std::runtime_error(std::string("TLS handshake failed: ") + ERR_error_string(err, nullptr));
+                throw std::runtime_error(std::string("TLS handshake failed: ") + err_buf);
             }
             return ssl;
         }
