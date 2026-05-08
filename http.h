@@ -76,7 +76,7 @@ namespace http
         {
             if (parsed.scheme == "https")
             {
-                SSL *ssl = detail::tls_wrap_socket(sockfd);
+                SSL *ssl = detail::tls_wrap_socket(sockfd, parsed.host);
                 detail::send_all_ssl(ssl, request_stream.str());
                 const std::string raw_response = detail::recv_until_close_ssl(ssl);
                 SSL_shutdown(ssl);
