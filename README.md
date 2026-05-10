@@ -90,7 +90,7 @@ target_link_libraries(myapp PRIVATE libhttp::libhttp)
 
 ```bash
 # Clone or include the library
-git clone https://github.com/your-username/lib-http
+git clone https://github.com/rismanasdk/lib-http
 
 # In your project's CMakeLists.txt
 add_subdirectory(lib-http)
@@ -111,6 +111,10 @@ Ensure you link against OpenSSL and zlib:
 
 ```bash
 g++ your_program.cc -o your_program -lssl -lcrypto -lz
+```
+Example with the testing program:
+```bash
+g++ main.cc -o main.cc -lssl -lcrypto -lz
 ```
 
 ## Building and Running
