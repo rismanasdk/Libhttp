@@ -3,7 +3,6 @@ from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 from conan.tools.files import copy
 import os
 
-
 class LibHttpConan(ConanFile):
     name = "libhttp"
     version = "2.0.0"
