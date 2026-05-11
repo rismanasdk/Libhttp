@@ -7,7 +7,6 @@
 
 namespace http
 {
-
     using DownloadProgressCallback = std::function<void(size_t current, size_t total)>;
 
     class StreamDownload
