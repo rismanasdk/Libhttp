@@ -26,10 +26,6 @@ int main()
         std::cout << "Content-Type: " << response.content_type() << std::endl;
         std::cout << std::endl;
 
-        http::Response req = http::get("http://httpbin.org");
-        std::cout << "Status code: " << req.status_code << std::endl;
-        std::cout << "Body: " req.text() << std:endl;
-
         // Example 2: Bearer Token Auth
         std::cout << "=== Bearer Token Auth ===" << std::endl;
         session.set_bearer_auth("your-api-token-here");
