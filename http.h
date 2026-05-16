@@ -6,7 +6,6 @@
 #include <string>
 #include <chrono>
 #include <openssl/ssl.h>
-
 #include "http_session.h"
 
 namespace http
