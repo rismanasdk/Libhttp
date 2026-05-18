@@ -16,6 +16,103 @@ int main()
         options.retry_delay_ms = 100;
 
         // ========================================
+        // Example 0: Authorization Methods
+        // ========================================
+        std::cout << "=== Authorization Methods ===" << std::endl;
+
+        // Method 1: Bearer Token (JWT, OAuth)
+        std::cout << "\n1. Bearer Token Authorization:" << std::endl;
+        try
+        {
+            session.set_header("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...");
+            http::Response auth_response = session.get("/get", options);
+            std::cout << "Status: " << auth_response.status_code << std::endl;
+            std::cout << "Bearer token sent successfully" << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "Bearer token request failed: " << e.what() << std::endl;
+        }
+
+        // Method 2: Basic Authentication (username:password)
+        std::cout << "\n2. Basic Authentication:" << std::endl;
+        try
+        {
+            // Format: Base64 encode "username:password"
+            // Example: "user:password" -> "dXNlcjpwYXNzd29yZA=="
+            session.set_header("Authorization", "Basic dXNlcjpwYXNzd29yZA==");
+            http::Response basic_auth_response = session.get("/get", options);
+            std::cout << "Status: " << basic_auth_response.status_code << std::endl;
+            std::cout << "Basic authentication sent successfully" << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "Basic auth request failed: " << e.what() << std::endl;
+        }
+
+        // Method 3: API Key in Header
+        std::cout << "\n3. API Key in Header:" << std::endl;
+        try
+        {
+            session.set_header("X-API-Key", "your-api-key-here-1234567890");
+            http::Response api_key_response = session.get("/get", options);
+            std::cout << "Status: " << api_key_response.status_code << std::endl;
+            std::cout << "API key sent successfully" << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "API key request failed: " << e.what() << std::endl;
+        }
+
+        // Method 4: API Key in Query Parameters
+        std::cout << "\n4. API Key in Query Parameters:" << std::endl;
+        try
+        {
+            http::RequestOptions api_key_params;
+            api_key_params.params["api_key"] = "your-api-key-here-1234567890";
+            api_key_params.params["user_id"] = "12345";
+            
+            http::Response api_key_query_response = session.get("/get", api_key_params);
+            std::cout << "Status: " << api_key_query_response.status_code << std::endl;
+            std::cout << "API key in query params sent successfully" << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "API key query params request failed: " << e.what() << std::endl;
+        }
+
+        // Method 5: Custom Authorization Header
+        std::cout << "\n5. Custom Authorization Header:" << std::endl;
+        try
+        {
+            session.set_header("Authorization", "Digest username=user, realm=example.com, nonce=abc123");
+            http::Response custom_auth_response = session.get("/get", options);
+            std::cout << "Status: " << custom_auth_response.status_code << std::endl;
+            std::cout << "Custom authorization sent successfully" << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "Custom auth request failed: " << e.what() << std::endl;
+        }
+
+        // Method 6: OAuth Token with Refresh
+        std::cout << "\n6. OAuth Token (Access Token):" << std::endl;
+        try
+        {
+            session.set_header("Authorization", "Bearer access_token_xyz789");
+            session.set_header("X-Refresh-Token", "refresh_token_abc123");
+            http::Response oauth_response = session.get("/get", options);
+            std::cout << "Status: " << oauth_response.status_code << std::endl;
+            std::cout << "OAuth token sent successfully" << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::cout << "OAuth request failed: " << e.what() << std::endl;
+        }
+
+        std::cout << std::endl;
+
+        // ========================================
         // Example 1: GET Request
         // ========================================
         std::cout << "=== GET Request ===" << std::endl;
@@ -110,11 +207,13 @@ int main()
         std::cout << std::endl;
 
         // ========================================
-        // Example 5: POST with Custom Headers
+        // Example 5: POST with Custom Headers & Authorization
         // ========================================
-        std::cout << "=== POST with Custom Headers ===" << std::endl;
+        std::cout << "=== POST with Custom Headers & Authorization ===" << std::endl;
         try
         {
+            // Set authorization headers
+            session.set_header("Authorization", "Bearer your-token-here");
             session.set_header("X-Custom-Header", "CustomValue");
             session.set_header("X-Request-ID", "12345-67890");
 
@@ -127,7 +226,7 @@ int main()
 
             http::Response custom_response = session.post("/post", custom_options);
             std::cout << "Status: " << custom_response.status_code << std::endl;
-            std::cout << "Custom headers sent with POST request" << std::endl;
+            std::cout << "Custom headers and authorization sent with POST request" << std::endl;
         }
         catch (const std::exception &e)
         {
