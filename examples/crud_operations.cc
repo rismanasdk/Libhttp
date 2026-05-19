@@ -15,9 +15,7 @@ int main()
         options.retry_count = 1;
         options.retry_delay_ms = 100;
 
-        // ========================================
         // Example 0: Authorization Methods
-        // ========================================
         std::cout << "=== Authorization Methods ===" << std::endl;
 
         // Method 1: Bearer Token (JWT, OAuth)
@@ -112,9 +110,7 @@ int main()
 
         std::cout << std::endl;
 
-        // ========================================
         // Example 1: GET Request
-        // ========================================
         std::cout << "=== GET Request ===" << std::endl;
         try
         {
@@ -131,9 +127,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 2: GET with Query Parameters
-        // ========================================
         std::cout << "=== GET with Query Parameters ===" << std::endl;
         try
         {
@@ -156,9 +150,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 3: POST Request with JSON Body
-        // ========================================
         std::cout << "=== POST Request with JSON Body ===" << std::endl;
         try
         {
@@ -185,9 +177,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 4: POST with Form Data
-        // ========================================
         std::cout << "=== POST with Form Data ===" << std::endl;
         try
         {
@@ -206,9 +196,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 5: POST with Custom Headers & Authorization
-        // ========================================
         std::cout << "=== POST with Custom Headers & Authorization ===" << std::endl;
         try
         {
@@ -234,9 +222,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 6: PUT Request
-        // ========================================
         std::cout << "=== PUT Request ===" << std::endl;
         try
         {
@@ -260,9 +246,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 7: PUT with Partial Update
-        // ========================================
         std::cout << "=== PUT with Partial Update ===" << std::endl;
         try
         {
@@ -283,9 +267,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 8: DELETE Request
-        // ========================================
         std::cout << "=== DELETE Request ===" << std::endl;
         try
         {
@@ -302,9 +284,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 9: DELETE with Query Parameters
-        // ========================================
         std::cout << "=== DELETE with Query Parameters ===" << std::endl;
         try
         {
@@ -322,9 +302,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 10: Complete CRUD Workflow
-        // ========================================
         std::cout << "=== Complete CRUD Workflow ===" << std::endl;
         try
         {
@@ -371,9 +349,7 @@ int main()
         }
         std::cout << std::endl;
 
-        // ========================================
         // Example 11: Error Handling for CRUD
-        // ========================================
         std::cout << "=== Error Handling ===" << std::endl;
         try
         {
