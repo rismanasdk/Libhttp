@@ -361,8 +361,7 @@ int main()
                 std::cout << "Is Server Error: " << (error_resp.is_server_error() ? "Yes" : "No") << std::endl;
             }
             
-            // Uncomment to raise exception on error status
-            // error_resp.raise_for_status();
+            error_resp.raise_for_status();
         }
         catch (const std::exception &e)
         {
