@@ -1,6 +1,6 @@
 # LibHTTP
 
-LibHTTP is a header-only C++ HTTP/1.1 client library for `http://` and `https://` requests, designed to be intuitive like Python's `requests` library while maintaining simplicity and performance.
+LibHTTP is a header-only C++ HTTP/1.1 and HTTP/2 client library for `http://` and `https://` requests, designed to be intuitive like Python's `requests` library while maintaining simplicity and performance.
 
 The goal is to move closer to Python `requests`, but in clear feature targets so the code stays understandable and easy to extend.
 
@@ -34,6 +34,13 @@ The goal is to move closer to Python `requests`, but in clear feature targets so
 8. **streaming response iteration** (iter_content, iter_lines)
 9. **request timing** (elapsed time tracking)
 
+### Target 4 - v3.0 (Completed) 🎉
+
+1. **HTTP/2 support** with frame-based multiplexing and stream management
+2. **WebSocket support** with frame handling and message callbacks
+3. **Connection pooling** with keep-alive and automatic cleanup
+4. **Thread-safe operations** for concurrent access
+
 ## File Layout
 
 The library is split into smaller headers:
@@ -54,6 +61,12 @@ The library is split into smaller headers:
 - `http_auth.h` for advanced authentication helpers
 - `http_json.h` for full JSON parsing and serialization
 - `http_stream.h` for streaming download support
+
+### v3.0 Feature Headers (NEW!)
+
+- `http_http2.h` for HTTP/2 protocol support with frames and streams
+- `http_websocket.h` for WebSocket connections with callbacks
+- `http_connection_pool.h` for connection pooling and keep-alive management
 
 ## Installation
 
@@ -90,10 +103,10 @@ target_link_libraries(myapp PRIVATE libhttp::libhttp)
 
 ```bash
 # Clone or include the library
-git clone https://github.com/rismanasdk/lib-http
+git clone https://github.com/rismanasdk/Libhttp
 
 # In your project's CMakeLists.txt
-add_subdirectory(lib-http)
+add_subdirectory(Libhttp)
 
 add_executable(myapp main.cpp)
 target_link_libraries(myapp PRIVATE libhttp::libhttp)
@@ -112,9 +125,10 @@ Ensure you link against OpenSSL and zlib:
 ```bash
 g++ your_program.cc -o your_program -lssl -lcrypto -lz
 ```
+
 Example with the testing program:
 ```bash
-g++ main.cc -o main.cc -lssl -lcrypto -lz
+g++ main.cc -o main -lssl -lcrypto -lz
 ```
 
 ## Building and Running
@@ -188,7 +202,7 @@ Example `conanfile.txt` in a consumer project:
 
 ```ini
 [requires]
-libhttp/2.0.0
+libhttp/3.0.0
 
 [generators]
 CMakeDeps
@@ -423,7 +437,7 @@ if (json.is_object()) {
 }
 if (json.is_array()) {
     for (const auto& item : json.array_value) {
-
+        // process item
     }
 }
 ```
@@ -508,6 +522,116 @@ http::Response response = http::get("https://api.example.com/data");
 std::cout << "Request took " << response.elapsed << " seconds" << std::endl;
 ```
 
+## v3.0 - New Features 🚀
+
+### HTTP/2 Support
+
+```cpp
+#include "http_http2.h"
+
+// HTTP/2 is designed for multiplexed streaming
+http::HttpVersion version = http::HttpVersion::HTTP_2;
+
+// Create HTTP/2 connection
+auto conn = http::detail::Http2Connection(sockfd, true);
+
+// Get next stream ID for multiplexing
+uint32_t stream_id = conn.get_next_stream_id();
+
+// Encode and send headers
+std::string headers = conn.encode_headers({{"Content-Type", "application/json"}});
+std::string frame = conn.create_headers_frame(stream_id, headers);
+```
+
+**Key Features:**
+- Frame-based multiplexing for better performance
+- Stream management with state tracking
+- Connection preface handling
+- Multiple requests over single connection
+- Binary protocol for efficiency
+
+### WebSocket Support
+
+```cpp
+#include "http_websocket.h"
+
+// Create WebSocket connection
+auto ws = http::websocket::Connection(sockfd, true);
+
+// Register message handlers
+ws.on_message([](const std::string& msg) {
+    std::cout << "Received: " << msg << std::endl;
+});
+
+ws.on_binary([](const std::string& data) {
+    std::cout << "Binary data received: " << data.size() << " bytes" << std::endl;
+});
+
+ws.on_close([](int code, const std::string& reason) {
+    std::cout << "Connection closed: " << code << " - " << reason << std::endl;
+});
+
+ws.on_error([](const std::string& error) {
+    std::cerr << "Error: " << error << std::endl;
+});
+
+// Send messages
+ws.send_text("Hello WebSocket!");
+ws.send_binary(binary_data);
+ws.send_ping();
+
+// Start receiving
+ws.start_receive_loop();
+
+// Check connection status
+if (ws.is_open()) {
+    ws.close_connection(1000, "Normal closure");
+}
+```
+
+**Key Features:**
+- Text and binary frame support
+- Ping/Pong for keepalive
+- Proper frame masking
+- Callback-based event handling
+- Thread-safe message sending
+
+### Connection Pooling
+
+```cpp
+#include "http_connection_pool.h"
+
+// Get global connection pool
+auto& pool = http::global_connection_pool();
+
+// Configure pool
+pool.set_max_pool_size(20);  // Maximum connections
+http::PoolingConfig config(true, 15);  // enable, max size
+
+// Get connection statistics
+auto stats = pool.get_stats();
+std::cout << "Total: " << stats.total_connections << std::endl;
+std::cout << "Active: " << stats.active_connections << std::endl;
+std::cout << "Idle: " << stats.idle_connections << std::endl;
+
+// Acquire/release connections
+int sockfd = pool.acquire_connection("api.example.com", "443", true);
+// Use connection...
+pool.release_connection("api.example.com", "443", true, sockfd, true);
+
+// Cleanup
+pool.cleanup_expired();
+pool.clear();
+```
+
+**Key Features:**
+- Automatic connection reuse for performance
+- Keep-alive support to reduce latency
+- Thread-safe pooling with mutex
+- Configurable pool size and idle timeout
+- Statistics and monitoring
+- Automatic cleanup of stale connections
+
 ## API Overview
 
 ### Free Functions
@@ -544,9 +668,9 @@ std::cout << "Request took " << response.elapsed << " seconds" << std::endl;
 - `stream` (v2.0)
 - `chunk_size` (v2.0)
 - `progress_callback` (v2.0)
-- `verify_ssl` (v2.0, reserved for future custom certificate support)
-- `ssl_cert_path` (v2.0, reserved for future custom certificate support)
-- `ssl_key_path` (v2.0, reserved for future custom certificate support)
+- `verify_ssl` (v2.0)
+- `ssl_cert_path` (v2.0)
+- `ssl_key_path` (v2.0)
 
 ### Response
 
@@ -630,7 +754,8 @@ HTTPS requests are automatically detected and use OpenSSL for TLS negotiation. G
 ## Notes
 
 - `http://` and `https://` URLs are supported
-- this library uses HTTP/1.1 over TCP sockets (plain for HTTP, TLS for HTTPS)
+- HTTP/1.1 is the default protocol over TCP sockets (plain for HTTP, TLS for HTTPS)
+- HTTP/2 support available via `http_http2.h` for multiplexed connections
 - `delete_()` uses an underscore because `delete` is a reserved C++ keyword
 - `Client` is available as an alias of `Session`
 - chunked responses are supported
@@ -643,10 +768,12 @@ HTTPS requests are automatically detected and use OpenSSL for TLS negotiation. G
 - automatic decompression supports gzip and deflate formats
 - response streaming with `iter_content()` and `iter_lines()` for memory-efficient processing
 - request elapsed time is tracked automatically in `response.elapsed`
+- WebSocket support for real-time bidirectional communication
+- Connection pooling for improved performance with keep-alive
 
 ## Build and Link
 
-To compile with HTTPS and automatic compression support, link against OpenSSL and zlib:
+To compile with HTTPS, automatic compression, and advanced features support, link against OpenSSL and zlib:
 
 ```bash
 g++ -std=c++17 -Wall -Wextra main.cc -o http_test -lssl -lcrypto -lz
@@ -654,9 +781,9 @@ g++ -std=c++17 -Wall -Wextra main.cc -o http_test -lssl -lcrypto -lz
 
 ## Comparison with Python Requests
 
-LibHTTP v2.0 implements most essential features of Python's `requests` library:
+LibHTTP v3.0 implements most essential features of Python's `requests` library:
 
-| Feature                                | Python requests              | LibHTTP v2.0        | Notes                                |
+| Feature                                | Python requests              | LibHTTP v3.0        | Notes                                |
 | -------------------------------------- | ---------------------------- | ------------------- | ------------------------------------ |
 | GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS | ✅                           | ✅                  | Full HTTP method support             |
 | Query parameters                       | ✅                           | ✅                  | Automatic URL encoding               |
@@ -675,9 +802,11 @@ LibHTTP v2.0 implements most essential features of Python's `requests` library:
 | Retries with backoff                   | ✅                           | ✅ (manual backoff) | Retry count & delay                  |
 | Session/connection reuse               | ✅                           | ✅ (Session object) | Cookie jar, headers, auth            |
 | Request elapsed time                   | ✅                           | ✅                  | response.elapsed in seconds          |
+| Connection pooling                     | ✅                           | ✅ (v3.0)           | Keep-alive and automatic cleanup     |
+| WebSocket support                      | ✅                           | ✅ (v3.0)           | Frame handling, callbacks            |
+| HTTP/2 support                         | ✅                           | ✅ (v3.0)           | Multiplexing, stream management      |
 | Prepared requests                      | ✅                           | ⚠️                  | Not yet implemented                  |
-| Hooks/callbacks                        | ✅                           | ✅ (partial)        | Progress callbacks for downloads     |
-| Connection pooling                     | ✅                           | ❌                  | Future enhancement                   |
+| Hooks/callbacks                        | ✅                           | ✅ (WebSocket)      | Message and close callbacks          |
 | Client certificates (mTLS)             | ✅                           | ❌                  | Future enhancement                   |
 | Brotli compression                     | ✅                           | ❌                  | Can be added if needed               |
 
@@ -687,12 +816,12 @@ This library implements the core features needed for most HTTP applications:
 
 Potential future enhancements:
 
-- connection pooling / keep-alive for better performance
 - client certificate (mTLS) support
 - automatic cookie jar persistence to disk
 - Brotli compression support
-- WebSocket support
 - prepared requests for advanced use cases
+- HPACK compression for HTTP/2 headers
+- push promise support for HTTP/2
 
 ## License
 
