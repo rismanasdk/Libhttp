@@ -1,7 +1,34 @@
+# Build directories
 build/
 build-*/
+final-check/
 
+# Generated binaries and executables
 main
 testing
 http_test
 {output_name}
+
+# Example binaries (if compiled locally)
+examples/01_simple_get
+examples/02_session
+examples/03_json_api
+examples/04_authentication
+examples/05_streaming
+examples/06_http2
+examples/07_websocket
+
+# Internal work-in-progress documentation
+RESTRUCTURE_COMPLETE.md
+RESTRUCTURE_PLAN.md
+REVIEW.md
+STABILIZATION_PLAN.md
+v3.0.0_RELEASE_SUMMARY.md
+
+# OS artifacts
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.idea/

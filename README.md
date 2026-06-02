@@ -1,8 +1,12 @@
-# LibHTTP
+# LibHTTP v3.0.0
 
-LibHTTP is a header-only C++ HTTP/1.1 and HTTP/2 client library for `http://` and `https://` requests, designed to be intuitive like Python's `requests` library while maintaining simplicity and performance.
+LibHTTP is a **header-only C++ HTTP/1.1 client library** for `http://` and `https://` requests, designed to be intuitive like Python's `requests` library while maintaining simplicity and performance.
 
-The goal is to move closer to Python `requests`, but in clear feature targets so the code stays understandable and easy to extend.
+**Version 3.0.0** is the stable, production-ready release with professional architecture, comprehensive testing, and optional experimental HTTP/2/WebSocket support.
+
+🎯 **Mission**: Bring Python `requests`-like simplicity to C++ HTTP clients with clear, understandable code architecture.
+
+⚠️ **Note**: HTTP/2 and WebSocket are experimental and disabled by default. See [Feature Flags](#feature-flags) to enable them.
 
 ## Current Progress
 
@@ -41,65 +45,106 @@ The goal is to move closer to Python `requests`, but in clear feature targets so
 3. **Connection pooling** with keep-alive and automatic cleanup
 4. **Thread-safe operations** for concurrent access
 
-## File Layout
+## Project Structure (v3.0.0)
 
-The library is split into smaller headers:
+LibHTTP is professionally organized with headers in logical categories:
 
-### Core Headers
+### Include Paths
 
-- `http.h` as the main include
-- `http_request.h` for request options and shared types
-- `http_response.h` for the response object
-- `http_detail.h` for low-level helpers
-- `http_session.h` for the `Session` class
+```
+include/libhttp/
+├── libhttp.hpp              # Main entry point - include this!
+├── types.h                  # Shared types (Headers, Cookies, etc.)
+├── core/
+│   ├── request.h            # RequestOptions struct
+│   ├── response.h           # Response class with status/header/cookie methods
+│   ├── session.h            # Session class for persistent connections
+│   └── detail.h             # Internal utilities and low-level implementations
+├── features/
+│   ├── auth.h               # Authentication helpers (Basic, Bearer, Digest, OAuth2)
+│   ├── json.h               # JSON parsing and serialization
+│   ├── stream.h             # Streaming download with progress callbacks
+│   ├── http2.h              # HTTP/2 support (EXPERIMENTAL, opt-in via flag)
+│   └── websocket.h          # WebSocket support (EXPERIMENTAL, opt-in via flag)
+└── utils/
+    ├── exceptions.h         # Custom exception types
+    ├── status.h             # HTTP status code constants and helpers
+    └── connection_pool.h    # Connection pooling for keep-alive
+```
 
-### v2.0 Feature Headers
+### Simple Usage
 
-- `http_exception.h` for custom exception types
-- `http_status.h` for HTTP status code constants and helpers
-- `http_proxy.h` for proxy configuration
-- `http_auth.h` for advanced authentication helpers
-- `http_json.h` for full JSON parsing and serialization
-- `http_stream.h` for streaming download support
+```cpp
+#include "libhttp/libhttp.hpp"
 
-### v3.0 Feature Headers (NEW!)
+// Just include this one header for everything!
+// HTTP/2 and WebSocket are automatically excluded unless built with feature flags
+```
 
-- `http_http2.h` for HTTP/2 protocol support with frames and streams
-- `http_websocket.h` for WebSocket connections with callbacks
-- `http_connection_pool.h` for connection pooling and keep-alive management
+---
+
+## Feature Flags
+
+Control experimental features at compile-time:
+
+### Default Build (HTTP/1.1 Production-Ready)
+
+```bash
+mkdir build && cd build
+cmake ..
+make
+```
+
+### Enable HTTP/2 (Experimental)
+
+```bash
+cmake .. -DLIBHTTP_ENABLE_HTTP2=ON
+```
+
+### Enable WebSocket (Experimental)
+
+```bash
+cmake .. -DLIBHTTP_ENABLE_WEBSOCKET=ON
+```
+
+### Enable All Features
+
+```bash
+cmake .. -DLIBHTTP_ENABLE_HTTP2=ON -DLIBHTTP_ENABLE_WEBSOCKET=ON
+```
+
+### Build with Tests
+
+```bash
+cmake .. -DLIBHTTP_BUILD_TESTS=ON
+```
+
+**Note**: HTTP/2 and WebSocket are **not recommended for production use** in v3.0.0. They have incomplete implementations and are provided for experimental use only. For production applications, use the default HTTP/1.1 configuration.
+
+---
 
 ## Installation
 
-### Option 1: Using vcpkg (Recommended)
-
-vcpkg makes it easy to install LibHTTP as a package dependency.
+### Option 1: Using CMake (Recommended)
 
 ```bash
-# Add libhttp to your vcpkg.json
-{
-  "dependencies": [ "libhttp" ]
-}
+# Clone the repository
+git clone https://github.com/rismanasdk/Libhttp
+cd Libhttp
+
+# Configure and build
+mkdir build && cd build
+cmake .. -DLIBHTTP_BUILD_TESTS=ON
+make
+
+# Install to system
+sudo make install
+
+# Optional: Run tests
+./tests/test_core
 ```
 
-Then install:
-
-```bash
-vcpkg install
-```
-
-In your `CMakeLists.txt`:
-
-```cmake
-cmake_minimum_required(VERSION 3.15)
-project(MyApp)
-
-find_package(libhttp REQUIRED)
-
-add_executable(myapp main.cpp)
-target_link_libraries(myapp PRIVATE libhttp::libhttp)
-```
-
-### Option 2: Using CMake (Direct)
+### Option 2: Using CMake in Your Project
 
 ```bash
 # Clone or include the library
@@ -127,6 +172,7 @@ g++ your_program.cc -o your_program -lssl -lcrypto -lz
 ```
 
 Example with the testing program:
+
 ```bash
 g++ main.cc -o main -lssl -lcrypto -lz
 ```
@@ -242,18 +288,63 @@ These libraries are required for:
 
 ## Quick Start
 
+### Basic GET Request
+
 ```cpp
 #include <iostream>
-#include "http.h"
+#include "libhttp/libhttp.hpp"
 
 int main() {
-    http::Response response = http::get("http://example.com");
+    // Simple GET request
+    http::Response response = http::get("https://httpbin.org/get");
 
-    std::cout << response.status_code << '\n';
-    std::cout << response.reason << '\n';
+    std::cout << "Status: " << response.status_code << '\n';
+    std::cout << "Body: " << response.text() << '\n';
+}
+```
+
+### Session with Multiple Requests
+
+```cpp
+#include "libhttp/libhttp.hpp"
+
+int main() {
+    // Create a session for persistent connections
+    http::Session session("https://api.github.com");
+
+    // Set default headers
+    session.set_header("Accept", "application/vnd.github.v3+json");
+    session.set_header("User-Agent", "libhttp-client");
+
+    // Make multiple requests - connections are reused
+    auto resp1 = session.get("/users/github");
+    auto resp2 = session.get("/repos/github/libhttp");
+
+    std::cout << "First: " << resp1.status_code << '\n';
+    std::cout << "Second: " << resp2.status_code << '\n';
+}
+```
+
+### POST with JSON
+
+```cpp
+#include "libhttp/libhttp.hpp"
+
+int main() {
+    http::RequestOptions opts;
+    opts.headers["Content-Type"] = "application/json";
+
+    http::Response response = http::post(
+        "https://httpbin.org/post",
+        R"({"name": "john", "age": 30})",
+        opts
+    );
+
     std::cout << response.text() << '\n';
 }
 ```
+
+---
 
 ## Requests-Like Usage
 
@@ -544,6 +635,7 @@ std::string frame = conn.create_headers_frame(stream_id, headers);
 ```
 
 **Key Features:**
+
 - Frame-based multiplexing for better performance
 - Stream management with state tracking
 - Connection preface handling
@@ -590,6 +682,7 @@ if (ws.is_open()) {
 ```
 
 **Key Features:**
+
 - Text and binary frame support
 - Ping/Pong for keepalive
 - Proper frame masking
@@ -625,6 +718,7 @@ pool.clear();
 ```
 
 **Key Features:**
+
 - Automatic connection reuse for performance
 - Keep-alive support to reduce latency
 - Thread-safe pooling with mutex
@@ -809,6 +903,56 @@ LibHTTP v3.0 implements most essential features of Python's `requests` library:
 | Hooks/callbacks                        | ✅                           | ✅ (WebSocket)      | Message and close callbacks          |
 | Client certificates (mTLS)             | ✅                           | ❌                  | Future enhancement                   |
 | Brotli compression                     | ✅                           | ❌                  | Can be added if needed               |
+
+## Testing & Documentation
+
+### Running Tests
+
+LibHTTP v3.0.0 includes a comprehensive test suite for validation:
+
+```bash
+# Build with tests enabled
+cmake .. -DLIBHTTP_BUILD_TESTS=ON
+
+# Run the test suite
+./tests/test_core
+```
+
+All tests are offline (no network required) and validate:
+
+- Request options and defaults
+- Response parsing and helpers
+- HTTP status code classification
+- Header and cookie access
+- Session management
+- Proxy configuration
+- Custom exception types
+
+See [TESTS.md](TESTS.md) for complete test documentation.
+
+### Documentation
+
+- 📖 **[TESTS.md](TESTS.md)** - Comprehensive test suite guide with 13 tests
+- 📝 **[STABILIZATION.md](STABILIZATION.md)** - v3.0.0 release notes and feature overview
+- 📋 **[CHANGELOG.md](CHANGELOG.md)** - Complete version history
+- 🔧 **[DEVELOPMENT.md](DEVELOPMENT.md)** - Contributor guidelines
+- 💡 **[examples/](examples/)** - 7 complete working examples
+
+### Key Documentation Sections
+
+**For v3.0.0 Production Users:**
+
+- Use [STABILIZATION.md](STABILIZATION.md) for stability guarantees
+- Check [Feature Flags](#feature-flags) for HTTP/2 and WebSocket opt-in
+- Review [Known Limitations](#current-limitations) section below
+
+**For Contributors:**
+
+- See [DEVELOPMENT.md](DEVELOPMENT.md) for project structure
+- Check [examples/](examples/) for usage patterns
+- Read [TESTS.md](TESTS.md) for test guidelines
+
+---
 
 ## Current Limitations
 

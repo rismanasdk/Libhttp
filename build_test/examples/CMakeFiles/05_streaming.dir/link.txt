@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/05_streaming.dir/05_streaming.cpp.o -o 05_streaming  /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so /usr/lib/x86_64-linux-gnu/libz.so 
