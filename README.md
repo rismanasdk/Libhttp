@@ -4,9 +4,9 @@ LibHTTP is a **header-only C++ HTTP/1.1 client library** for `http://` and `http
 
 **Version 3.0.0** is the stable, production-ready release with professional architecture, comprehensive testing, and optional experimental HTTP/2/WebSocket support.
 
-🎯 **Mission**: Bring Python `requests`-like simplicity to C++ HTTP clients with clear, understandable code architecture.
+**Mission**: Bring Python `requests`-like simplicity to C++ HTTP clients with clear, understandable code architecture.
 
-⚠️ **Note**: HTTP/2 and WebSocket are experimental and disabled by default. See [Feature Flags](#feature-flags) to enable them.
+**Note**: HTTP/2 and WebSocket are experimental and disabled by default. See [Feature Flags](#feature-flags) to enable them.
 
 ## Current Progress
 
@@ -38,7 +38,7 @@ LibHTTP is a **header-only C++ HTTP/1.1 client library** for `http://` and `http
 8. **streaming response iteration** (iter_content, iter_lines)
 9. **request timing** (elapsed time tracking)
 
-### Target 4 - v3.0 (Completed) 🎉
+### Target 4 - v3.0 (Completed) 
 
 1. **HTTP/2 support** with frame-based multiplexing and stream management
 2. **WebSocket support** with frame handling and message callbacks
@@ -932,11 +932,11 @@ See [TESTS.md](TESTS.md) for complete test documentation.
 
 ### Documentation
 
-- 📖 **[TESTS.md](TESTS.md)** - Comprehensive test suite guide with 13 tests
-- 📝 **[STABILIZATION.md](STABILIZATION.md)** - v3.0.0 release notes and feature overview
-- 📋 **[CHANGELOG.md](CHANGELOG.md)** - Complete version history
-- 🔧 **[DEVELOPMENT.md](DEVELOPMENT.md)** - Contributor guidelines
-- 💡 **[examples/](examples/)** - 7 complete working examples
+- **[TESTS.md](TESTS.md)** - Comprehensive test suite guide with 13 tests
+- **[STABILIZATION.md](STABILIZATION.md)** - v3.0.0 release notes and feature overview
+- **[CHANGELOG.md](CHANGELOG.md)** - Complete version history
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Contributor guidelines
+- **[examples/](examples/)** - 7 complete working examples
 
 ### Key Documentation Sections
 
