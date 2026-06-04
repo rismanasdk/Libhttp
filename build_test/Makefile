@@ -284,8 +284,6 @@ help:
 	@echo "... 07_websocket"
 .PHONY : help
 
-
-
 #=============================================================================
 # Special targets to cleanup operation of make.
 
@@ -295,4 +293,3 @@ help:
 cmake_check_build_system:
 	$(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
-
